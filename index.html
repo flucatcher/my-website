@@ -13,6 +13,8 @@
         rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
@@ -1454,6 +1456,71 @@
         .c-orange {
             background: #f59e0b;
         }
+
+        /* Responsive Improvements */
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                width: 0;
+                padding: 0;
+                overflow: hidden;
+            }
+
+            .main {
+                padding-bottom: 80px;
+            }
+
+            .fab {
+                width: 50px;
+                height: 50px;
+                bottom: 20px;
+            }
+
+            #chat-fab {
+                right: 20px;
+            }
+
+            #music-toggle {
+                right: 80px;
+            }
+
+            #stats-fab {
+                right: 140px;
+            }
+
+            #goals-fab {
+                right: 200px;
+            }
+
+            .widget-draggable {
+                width: 90vw !important;
+                left: 5vw !important;
+                top: 10vh !important;
+            }
+        }
+
+        .music-extra-controls {
+            display: flex;
+            gap: 15px;
+            margin-top: 5px;
+        }
+
+        .music-btn-small {
+            color: rgba(255, 255, 255, 0.5);
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: 0.3s;
+        }
+
+        .music-btn-small.active {
+            color: var(--accent);
+            text-shadow: 0 0 10px var(--accent);
+        }
     </style>
 </head>
 
@@ -1633,10 +1700,17 @@
                     <div class="progress-bar" id="progress-bar"></div>
                 </div>
                 <div class="time-info"><span id="current-time">0:00</span><span id="duration">0:00</span></div>
-                <div class="controls"><button class="control-btn" onclick="app.music.prev()"><i
-                            class="fas fa-step-backward"></i></button><button class="control-btn main-play"
-                        id="play-btn" onclick="app.music.togglePlay()"><i class="fas fa-play"></i></button><button
-                        class="control-btn" onclick="app.music.next()"><i class="fas fa-step-forward"></i></button>
+                <div class="controls">
+                    <button class="control-btn" onclick="app.music.prev()"><i class="fas fa-step-backward"></i></button>
+                    <button class="control-btn main-play" id="play-btn" onclick="app.music.togglePlay()"><i
+                            class="fas fa-play"></i></button>
+                    <button class="control-btn" onclick="app.music.next()"><i class="fas fa-step-forward"></i></button>
+                </div>
+                <div class="music-extra-controls">
+                    <button class="music-btn-small" id="shuffle-btn" onclick="app.music.toggleShuffle()"
+                        title="Shuffle"><i class="fas fa-random"></i></button>
+                    <button class="music-btn-small" id="loop-btn" onclick="app.music.toggleLoop()" title="Loop"><i
+                            class="fas fa-redo"></i></button>
                 </div>
                 <div class="volume-container"><i class="fas fa-volume-down"></i><input type="range" id="volume-slider"
                         min="0" max="100" value="50" oninput="app.music.setVolume(this.value)"></div>
@@ -1733,13 +1807,13 @@
     <script>
         // CONFIG
         const firebaseConfig = {
-            apiKey: "AIzaSyDjC7VPx-UEofwhr3byBWw8zAsQKHI7JSM",
-            authDomain: "gen1-app.firebaseapp.com",
-            projectId: "gen1-app",
-            storageBucket: "gen1-app.firebasestorage.app",
-            messagingSenderId: "338992842676",
-            appId: "1:338992842676:web:e84c144e2ba697406554e1",
-            measurementId: "G-KYTFBFS1QG"
+            apiKey: "AIzaSyAA2BgtVsMVxSWrO8bAOAkG3a9iUvUG7yY",
+            authDomain: "gen1-93980.firebaseapp.com",
+            projectId: "gen1-93980",
+            storageBucket: "gen1-93980.firebasestorage.app",
+            messagingSenderId: "438669685990",
+            appId: "1:438669685990:web:3b50e2ede2db5a2792f727",
+            measurementId: "G-ZJ4SZNMP2X"
         };
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
@@ -1865,12 +1939,12 @@
             },
             quickCapture: { toggle() { const el = document.getElementById('quick-capture-overlay'); el.classList.toggle('active'); if (el.classList.contains('active')) document.getElementById('quick-input').focus(); }, save() { const val = document.getElementById('quick-input').value; if (val) { const area = document.getElementById('notes-area'); area.value += `\n- ${val}`; localStorage.setItem('g1-notes', area.value); document.getElementById('quick-input').value = ''; this.close(); app.toast("Saved!"); } }, close() { document.getElementById('quick-capture-overlay').classList.remove('active'); } },
             ambient: { setVolume(t, v) { const a = document.getElementById('audio-' + t); if (a) { a.volume = v / 100; if (v > 0 && a.paused) a.play().catch(() => { }); if (v == 0) a.pause(); } } },
-            goals: { list: [], init() { const s = localStorage.getItem('g1-goals'); const d = localStorage.getItem('g1-goals-date'); const t = new Date().toDateString(); if (d !== t) { this.list = []; localStorage.setItem('g1-goals-date', t); } else if (s) this.list = JSON.parse(s); this.render(); }, add() { const i = document.getElementById('goal-input'); if (i.value.trim()) { this.list.push({ text: i.value.trim(), done: false }); this.save(); this.render(); i.value = ''; } }, toggle(i) { this.list[i].done = !this.list[i].done; this.save(); this.render(); }, remove(i) { this.list.splice(i, 1); this.save(); this.render(); }, clear() { if (confirm("Xóa?")) { this.list = []; this.save(); this.render(); } }, save() { localStorage.setItem('g1-goals', JSON.stringify(this.list)) }, render() { const c = document.getElementById('goal-list'); c.innerHTML = this.list.map((g, i) => `<div class="goal-item ${g.done ? 'done' : ''}"><input type="checkbox" class="goal-checkbox" ${g.done ? 'checked' : ''} onchange="app.goals.toggle(${i})"><span class="goal-text">${g.text}</span><i class="fa-solid fa-trash goal-delete" onclick="app.goals.remove(${i})"></i></div>`).join('') } },
+            goals: { list: [], init() { const s = localStorage.getItem('g1-goals'); const d = localStorage.getItem('g1-goals-date'); const t = new Date().toDateString(); if (d !== t) { this.list = []; localStorage.setItem('g1-goals-date', t); } else if (s) this.list = JSON.parse(s); this.render(); }, add() { const i = document.getElementById('goal-input'); if (i.value.trim()) { this.list.push({ text: i.value.trim(), done: false }); this.save(); this.render(); i.value = ''; } }, toggle(i) { this.list[i].done = !this.list[i].done; if (this.list[i].done) confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } }); this.save(); this.render(); }, remove(i) { this.list.splice(i, 1); this.save(); this.render(); }, clear() { if (confirm("Xóa?")) { this.list = []; this.save(); this.render(); } }, save() { localStorage.setItem('g1-goals', JSON.stringify(this.list)) }, render() { const c = document.getElementById('goal-list'); c.innerHTML = this.list.map((g, i) => `<div class="goal-item ${g.done ? 'done' : ''}"><input type="checkbox" class="goal-checkbox" ${g.done ? 'checked' : ''} onchange="app.goals.toggle(${i})"><span class="goal-text">${g.text}</span><i class="fa-solid fa-trash goal-delete" onclick="app.goals.remove(${i})"></i></div>`).join('') } },
             stats: { data: { pomos: 0, focusMinutes: 0, daily: [0, 0, 0, 0, 0, 0, 0] }, chart: null, init() { const s = localStorage.getItem('g1-stats'); if (s) this.data = JSON.parse(s); this.render(); }, logPomo(m) { this.data.pomos++; this.data.focusMinutes += m; const d = new Date().getDay(); const i = d === 0 ? 6 : d - 1; this.data.daily[i] += m; this.save(); this.render(); }, save() { localStorage.setItem('g1-stats', JSON.stringify(this.data)) }, render() { document.getElementById('total-focus-time').innerText = `${Math.floor(this.data.focusMinutes / 60)}h ${this.data.focusMinutes % 60}m`; if (this.chart) this.chart.destroy(); const ctx = document.getElementById('stats-chart').getContext('2d'); this.chart = new Chart(ctx, { type: 'bar', data: { labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], datasets: [{ label: 'Mins', data: this.data.daily, backgroundColor: '#3b82f6', borderRadius: 4 }] }, options: { scales: { y: { beginAtZero: true } }, plugins: { legend: { display: false } }, responsive: true, maintainAspectRatio: false } }); } },
             reminder: { timer: null, start(m) { clearTimeout(this.timer); this.timer = setTimeout(() => { document.getElementById('break-overlay').classList.add('active'); document.getElementById('audio-break').play(); }, m * 60 * 1000); }, close() { document.getElementById('break-overlay').classList.remove('active'); document.getElementById('audio-break').pause(); } },
 
             music: {
-                player: null, isPlaying: false, currentIndex: 0, progressTimer: null,
+                player: null, isPlaying: false, currentIndex: 0, progressTimer: null, isShuffle: false, isLoop: false,
                 playlist: JSON.parse(localStorage.getItem('yt_playlist')) || [{ title: "Lofi", id: "jfKfPfyJRdk" }],
 
                 initPlayer() { if (!window.YT) return; this.player = new YT.Player('player-hidden', { height: '1', width: '1', videoId: this.playlist[0].id, playerVars: { 'origin': window.location.origin }, events: { 'onReady': () => this.loadTrack(this.currentIndex, false), 'onStateChange': (e) => this.onStateChange(e) } }); },
@@ -1878,7 +1952,11 @@
                 onStateChange(e) {
                     if (e.data == 1) { this.isPlaying = true; this.updateBtn(); this.startProgress(); }
                     else if (e.data == 2) { this.isPlaying = false; this.updateBtn(); this.stopProgress(); }
-                    else if (e.data == 0) { this.stopProgress(); this.next(); }
+                    else if (e.data == 0) {
+                        this.stopProgress();
+                        if (this.isLoop) { this.player.seekTo(0); this.player.playVideo(); }
+                        else { this.next(); }
+                    }
                 },
 
                 startProgress() {
@@ -1905,7 +1983,16 @@
                 },
 
                 togglePlay() { if (this.player) { if (this.isPlaying) this.player.pauseVideo(); else this.player.playVideo(); } },
-                next() { this.currentIndex = (this.currentIndex + 1) % this.playlist.length; this.loadTrack(this.currentIndex); },
+                toggleShuffle() { this.isShuffle = !this.isShuffle; document.getElementById('shuffle-btn').classList.toggle('active'); app.toast(this.isShuffle ? "Shuffle On" : "Shuffle Off"); },
+                toggleLoop() { this.isLoop = !this.isLoop; document.getElementById('loop-btn').classList.toggle('active'); app.toast(this.isLoop ? "Loop On" : "Loop Off"); },
+                next() {
+                    if (this.isShuffle) {
+                        this.currentIndex = Math.floor(Math.random() * this.playlist.length);
+                    } else {
+                        this.currentIndex = (this.currentIndex + 1) % this.playlist.length;
+                    }
+                    this.loadTrack(this.currentIndex);
+                },
                 prev() { this.currentIndex = (this.currentIndex - 1 + this.playlist.length) % this.playlist.length; this.loadTrack(this.currentIndex); },
                 loadTrack(i, auto = true) { this.currentIndex = i; const t = this.playlist[i]; document.getElementById('track-title').innerText = t.title; document.getElementById('current-art').innerHTML = `<img src="https://img.youtube.com/vi/${t.id}/0.jpg">`; this.renderList(); if (this.player && this.player.loadVideoById) { if (auto) this.player.loadVideoById(t.id); else this.player.cueVideoById(t.id); } },
                 updateBtn() { document.getElementById('play-btn').innerHTML = this.isPlaying ? '<i class="fas fa-pause"></i>' : '<i class="fas fa-play"></i>'; },
@@ -1914,6 +2001,7 @@
                     const url = document.getElementById('yt-url-input').value;
                     const v = url.match(/[?&]v=([^&]+)/);
                     if (v) {
+                        app.toast("Searching...");
                         let title = "New Song";
                         try {
                             const res = await fetch(`https://noembed.com/embed?url=https://www.youtube.com/watch?v=${v[1]}`);
@@ -1929,12 +2017,19 @@
                         document.getElementById('yt-url-input').value = '';
                         app.toast(`Added: ${title}`);
                     } else {
-                        app.toast("Invalid URL");
+                        app.toast("Invalid YouTube URL");
                     }
                 },
 
                 renderList() { document.getElementById('playlist-list').innerHTML = this.playlist.map((t, i) => `<li class="playlist-item-new ${i === this.currentIndex ? 'active' : ''}" onclick="app.music.loadTrack(${i})"><div style="flex:1">${t.title}</div><button class="playlist-remove" onclick="event.stopPropagation();app.music.remove(${i})"><i class="fas fa-trash"></i></button></li>`).join(''); },
-                remove(i) { this.playlist.splice(i, 1); localStorage.setItem('yt_playlist', JSON.stringify(this.playlist)); this.renderList(); },
+                remove(i) {
+                    if (confirm("Remove this song?")) {
+                        this.playlist.splice(i, 1);
+                        localStorage.setItem('yt_playlist', JSON.stringify(this.playlist));
+                        this.renderList();
+                        app.toast("Song Removed");
+                    }
+                },
                 togglePlaylistPanel() { document.getElementById('playlist-panel').classList.toggle('active'); },
                 onSeekClick(e) { if (!this.player) return; const p = e.offsetX / e.target.clientWidth; this.player.seekTo(p * this.player.getDuration(), true); },
                 setVolume(v) { if (this.player) this.player.setVolume(v); }
@@ -1942,7 +2037,7 @@
 
             deep: { timer: null, sec: 0, start() { app.nav('deep-view'); document.documentElement.requestFullscreen().catch(() => { }); this.timer = setInterval(() => { this.sec++; document.getElementById('deep-display').innerText = new Date(this.sec * 1000).toISOString().substr(11, 8) }, 1000); app.reminder.start(60); }, stop() { clearInterval(this.timer); document.exitFullscreen().catch(() => { }); app.nav('home-view'); app.reminder.close(); app.stats.logPomo(Math.floor(this.sec / 60)); } },
             pomo: { timer: null, time: 1500, running: false, toggle() { const b = document.getElementById('pomo-btn'); if (this.running) { clearInterval(this.timer); this.running = false; b.innerText = "Resume"; } else { this.timer = setInterval(() => { this.time--; const m = Math.floor(this.time / 60), s = this.time % 60; document.getElementById('pomo-display').innerText = `${m}:${s < 10 ? '0' : ''}${s}`; if (this.time <= 0) { clearInterval(this.timer); app.toast("Done!"); this.reset(); app.stats.logPomo(25); } }, 1000); this.running = true; b.innerText = "Pause"; } }, reset() { clearInterval(this.timer); this.time = 1500; this.running = false; document.getElementById('pomo-display').innerText = "25:00"; document.getElementById('pomo-btn').innerText = "Start"; } },
-            chat: { async send() { const i = document.getElementById('chat-input'); if (!i.value) return; const k = localStorage.getItem('g1-api-key'); if (!k) return app.toast("Missing Key"); this.append(i.value, 'user'); const t = i.value; i.value = ''; try { const m = localStorage.getItem('g1-ai-model') || 'gemini-2.5-flash'; const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${k}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: t }] }] }) }); const d = await r.json(); if (d.error) throw new Error(d.error.message); this.append(d.candidates[0].content.parts[0].text, 'bot'); } catch (e) { this.append("Error: " + e.message, 'bot') } }, append(t, r) { const d = document.createElement('div'); d.className = `message ${r}`; d.innerText = t; document.getElementById('chat-messages').appendChild(d); } },
+            chat: { async send() { const i = document.getElementById('chat-input'); if (!i.value) return; const k = localStorage.getItem('g1-api-key'); if (!k) return app.toast("Missing Key"); this.append(i.value, 'user'); const t = i.value; i.value = ''; try { const m = localStorage.getItem('g1-ai-model') || 'gemini-2.5-flash'; const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${k}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: t }] }] }) }); const d = await r.json(); if (d.error) throw new Error(d.error.message); this.append(d.candidates[0].content.parts[0].text, 'bot'); } catch (e) { this.append("Error: " + e.message, 'bot') } }, append(t, r) { const d = document.createElement('div'); d.className = `message ${r}`; d.innerHTML = r === 'bot' ? marked.parse(t) : t; document.getElementById('chat-messages').appendChild(d); } },
 
             ai: {
                 currentEditIndex: -1,
